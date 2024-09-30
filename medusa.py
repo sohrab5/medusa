@@ -214,7 +214,7 @@ def download_assets(links):
             print(f'Encountered error while downloading {link}: {e}')
             continue
 
-def write_html_file(html, name, current_path_dir):
+def write_html_file(html, name):
     html = RE_ALL_LINKS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
     html = RE_ALL_LINKS_SCHEMELESS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
 
@@ -271,7 +271,7 @@ if not html:
     print('Getting the initial page failed. Exiting.')
     exit(1)
 
-write_html_file(html, 'index', current_path_dir)
+write_html_file(html, 'index')
 
 while True:
     try:
@@ -301,7 +301,7 @@ while True:
 
     filename = link.replace(f'{input_url_complete}/', '').replace('/', '-')
 
-    write_html_file(html, filename, current_path_dir)
+    write_html_file(html, filename)
     link_to_file[link] = filename
 
 print('Downloading CSS files...')
