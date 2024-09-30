@@ -100,6 +100,7 @@ if pargs['no_ssl_verify']:
 
 link_to_file = {}
 dirs_to_create = {}
+written_htmls = {}
 static_assets = set()
 css_files = set()
 css_assets = set()
@@ -272,6 +273,7 @@ if not html:
     exit(1)
 
 write_html_file(html, 'index')
+written_htmls[hash(html)] = 'index'
 
 while True:
     try:
@@ -299,9 +301,15 @@ while True:
 
     non_asset_links.update(non_asset_links_i)
 
-    filename = link.replace(f'{input_url_complete}/', '').replace('/', '-')
+    html_hash = hash(html)
 
-    write_html_file(html, filename)
+    if html_hash in written_htmls:
+        filename = written_htmls[html_hash]
+    else:
+        filename = link.replace(f'{input_url_complete}/', '').replace('/', '-')
+        write_html_file(html, filename)
+        written_htmls[html_hash] = filename
+
     link_to_file[link] = filename
 
 print('Downloading CSS files...')
