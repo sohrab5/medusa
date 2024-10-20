@@ -75,6 +75,10 @@ The following example will produce clean results on most typical Wordpress websi
 ```
 python3 medusa.py -s='?p=' -s=json -s=xmlrpc https://mywordpresswebsite.com
 ```
+It is possible to start crawling from an arbitrary path. Parent pages will be skipped in this case:
+```
+python3 medusa.py https://example.com/some-path
+```
 When the script is finished running, we can build a self contained Docker image of the whole website:
 ```
 docker build --build-arg WEBROOT_DIR=example.com_files --build-arg NGINX_CONFS_DIR=example.com_nginx_confs -t example.com-static-website:2024-08-25T16-32 .
@@ -91,11 +95,7 @@ In general things are kept as simple and bare bones as possible so it can be use
 
 ### Known bugs and limitations
 
-Currently the URL for the website to be crawled has to be the root URL and we can't start at a sub path. For example `https://site.example.com` is a valid root URL argument but `https://site.example.com/some-path` is not.
-
-We can start at the root of the website and skip unwanted paths like mentioned above to kind of get around this.
-
-Also the script is regex based and doesn't use heavy parsing libraries for HTML and CSS. That means there might be corner cases in those standards that won't function properly here. I'd appreciate a bug report if you spot any valid HTML/CSS on a source website that is not working correctly on the static version of it. That said the common ways of writing HTML and CSS that majority of websites use are supported and tested.
+The script is regex based and doesn't use heavy parsing libraries for HTML and CSS. That means there might be corner cases in those standards that won't function properly here. I'd appreciate a bug report if you spot any valid HTML/CSS on a source website that is not working correctly on the static version of it. That said the common ways of writing HTML and CSS that majority of websites use are supported and tested.
 
 ### Disclaimer
 

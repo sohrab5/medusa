@@ -60,13 +60,14 @@ input_host = parsed_uri.netloc
 scheme     = parsed_uri.scheme
 output_dir = f'{parsed_uri.netloc}_files'
 nginx_confs_output_dir = f'{parsed_uri.netloc}_nginx_confs'
-input_url_complete = f'{parsed_uri.scheme}://{parsed_uri.netloc}'
-root_urls = {input_url_complete, f'{input_url_complete}/'}
+input_root_url = f'{parsed_uri.scheme}://{parsed_uri.netloc}'
+input_path = parsed_uri.path
+input_url = f'{parsed_uri.scheme}://{parsed_uri.netloc}{parsed_uri.path}'
 
-if parsed_uri.path not in {'', '/'}:
-    print("Current implementation doesn't support starting at arbitrary paths.")
-    print(f'Try {input_url_complete} instead.')
-    exit(1)
+if input_path in {'', '/'}:
+    start_at_root = True
+else:
+    start_at_root = False
 
 RE_HREF                 = re.compile(r'''href=['"]?(\S+?)[\n"'#> ]''')
 RE_SRC                  = re.compile(r'''src=['"]?(\S+?)[\n"'#> ]''')
@@ -78,7 +79,7 @@ RE_CSS_URLS_ALL         = re.compile(r'''url\((['"])?([^ '"?)#]+)''')
 RE_INLINE_STYLE         = re.compile(r'''<style(.+?)(?:</style>|/>)''', flags=re.DOTALL)
 
 c = pycurl.Curl()
-c.setopt(pycurl.USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+c.setopt(pycurl.USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
 c.setopt(pycurl.FOLLOWLOCATION, 1)
 c.setopt(pycurl.HTTPHEADER, ['ACCEPT: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 'ACCEPT_ENCODING: gzip, deflate, br','ACCEPT_LANGUAGE: en-US,en;q=0.5','CONNECTION: keep-alive',
@@ -126,7 +127,7 @@ def get_html_and_links(link):
     href_links_list = RE_HREF.findall(html)
     src_links_list  = RE_SRC.findall(html)
 
-    current_path_dir = '/'.join(link.replace(input_url_complete, '').split('/')[:-1])
+    current_path_dir = '/'.join(link.replace(input_root_url, '').split('/')[:-1])
 
     hrefs_set = resolve_links(href_links_list, current_path_dir)
     srcs_set  = resolve_links(src_links_list,  current_path_dir)
@@ -151,7 +152,7 @@ def get_html_and_links(link):
             static_assets.add(link[:link.find('?')])
 
     non_asset_links = hrefs_set - static_assets - css_files
-    non_asset_links = {x for x in non_asset_links if input_url_complete in x and x not in root_urls}
+    non_asset_links = {x for x in non_asset_links if input_url in x}
     non_asset_links = {x for x in non_asset_links if '.css?' not in x and '.js?' not in x}
 
     return (html, non_asset_links, current_path_dir)
@@ -165,26 +166,26 @@ def resolve_links(links, current_path_dir):
         elif link.startswith('http') and not link.startswith(f'{scheme}://{input_host}'):
             continue
         elif link.startswith('/') and not link.startswith('//'):
-            complete_link = f'{input_url_complete}{link}'
+            complete_link = f'{input_root_url}{link}'
         elif link.startswith(f'//{input_host}'):
             complete_link = f'{scheme}:{link}'
         elif link.startswith('./'):
-            complete_link = f'{input_url_complete}{current_path_dir}{link[1:]}'
+            complete_link = f'{input_root_url}{current_path_dir}{link[1:]}'
         elif link.startswith('../'):
             ls = link.split('../')
             levels = len(ls) - 1
             current_path_dirs = current_path_dir.split('/')
             if levels >= len(current_path_dirs):
-                complete_link = f'{input_url_complete}/{ls[-1]}'
+                complete_link = f'{input_root_url}/{ls[-1]}'
             else:
                 dir = '/'.join(current_path_dirs[:-levels])
-                complete_link = f'{input_url_complete}{dir}/{ls[-1]}'
+                complete_link = f'{input_root_url}{dir}/{ls[-1]}'
         elif link.startswith('#'):
             continue
         elif link.startswith('data:'):
             continue
         elif link:
-            complete_link = f'{input_url_complete}{current_path_dir}/{link}'
+            complete_link = f'{input_root_url}{current_path_dir}/{link}'
 
         output.add(complete_link)
 
@@ -192,7 +193,7 @@ def resolve_links(links, current_path_dir):
 
 def create_directories(links):
     for link in links:
-        path_and_name = link.replace(f'{input_url_complete}/', '')
+        path_and_name = link.replace(f'{input_root_url}/', '')
         path_and_name = '/'.join(path_and_name.split('/')[:-1])
         path_and_name = f'{output_dir}/{path_and_name}'
         dirs_to_create[path_and_name] = False
@@ -205,7 +206,7 @@ def create_directories(links):
 def download_assets(links):
     for link in links:
         c.setopt(c.URL, bytes(link, 'utf-8'))
-        path_and_name = link.replace(f'{input_url_complete}/', '')
+        path_and_name = link.replace(f'{input_root_url}/', '')
         filename = f'{output_dir}/{path_and_name}'
         c.fp = open(filename, "wb")
         c.setopt(c.WRITEDATA, c.fp)
@@ -226,7 +227,7 @@ def write_html_file(html, name):
         f.writelines(html)
 
 def process_css_url_functions(link, content):
-    current_css_path = '/'.join(link.replace(input_url_complete, '').split('/')[:-1])
+    current_css_path = '/'.join(link.replace(input_root_url, '').split('/')[:-1])
 
     css_asset_links = RE_CSS_URLS_ALL.findall(content)
     css_asset_links = [x[1] for x in css_asset_links]
@@ -255,7 +256,7 @@ def download_css_files(css_files):
 
         css = process_css_url_functions(link, css)
 
-        path_and_name = link.replace(f'{input_url_complete}/', '')
+        path_and_name = link.replace(f'{input_root_url}/', '')
         css_filename = f'{output_dir}/{path_and_name}'
 
         with open(css_filename, 'w') as f:
@@ -272,8 +273,14 @@ if not html:
     print('Getting the initial page failed. Exiting.')
     exit(1)
 
-write_html_file(html, 'index')
-written_htmls[hash(html)] = 'index'
+if start_at_root:
+    write_html_file(html, 'index')
+    written_htmls[hash(html)] = 'index'
+else:
+    filename = input_path.replace('/', '-')
+    write_html_file(html, filename)
+    written_htmls[hash(html)] = filename
+    link_to_file[input_url] = filename
 
 while True:
     try:
@@ -306,7 +313,7 @@ while True:
     if html_hash in written_htmls:
         filename = written_htmls[html_hash]
     else:
-        filename = link.replace(f'{input_url_complete}/', '').replace('/', '-')
+        filename = link.replace(f'{input_root_url}/', '').replace('/', '-')
         write_html_file(html, filename)
         written_htmls[html_hash] = filename
 
@@ -331,7 +338,7 @@ makedirs(nginx_confs_output_dir, exist_ok=True)
 
 with open(f'{nginx_confs_output_dir}/url_paths.conf', 'w') as f:
     for link in link_to_file:
-        link_path = link.replace(f'{input_url_complete}', '')
+        link_path = link.replace(f'{input_root_url}', '')
         f.write(f'location = {link_path} {{ try_files /{link_to_file[link]}.html =404; }}\n')
 
 current_datetime = datetime.now().strftime("%Y-%m-%dT%H-%M")
