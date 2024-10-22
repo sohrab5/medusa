@@ -71,6 +71,7 @@ else:
 
 RE_HREF                 = re.compile(r'''href=['"]?(\S+?)[\n"'#> ]''')
 RE_SRC                  = re.compile(r'''src=['"]?(\S+?)[\n"'#> ]''')
+RE_SRCSET               = re.compile(r'''srcset=['"]?(.+?)["'#>]''', flags=re.DOTALL)
 RE_ALL_LINKS            = re.compile(r'''(src|href)=(['"])?https?://''' + input_host + '[/]?')
 RE_ALL_LINKS_SCHEMELESS = re.compile(r'''(src|href)=(['"])?//''' + input_host + '/')
 RE_CSS_URLS_FULL_CLEAN  = re.compile(r'''url\((['"])?https?://''' + input_host + '/')
@@ -125,6 +126,9 @@ def get_html_and_links(link):
 
     href_links_list = RE_HREF.findall(html)
     src_links_list  = RE_SRC.findall(html)
+
+    srcsets = RE_SRCSET.findall(html)
+    src_links_list.extend( [x.split()[0] for x in srcsets for x in x.split(',')] )
 
     current_path_dir = '/'.join(link.replace(input_root_url, '').split('/')[:-1])
 
@@ -218,6 +222,11 @@ def download_assets(links):
 def write_html_file(html, name):
     html = RE_ALL_LINKS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
     html = RE_ALL_LINKS_SCHEMELESS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
+
+    srcsets = RE_SRCSET.findall(html)
+    for srcset in srcsets:
+        modified_srcset = srcset.replace(input_root_url, ABSOLUTE_URL_PREFIX)
+        html = html.replace(srcset, modified_srcset)
 
     with open(f'{output_dir}/{name}.html', 'w') as f:
         f.writelines(html)
