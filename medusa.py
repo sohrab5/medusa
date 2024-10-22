@@ -73,7 +73,6 @@ RE_HREF                 = re.compile(r'''href=['"]?(\S+?)[\n"'#> ]''')
 RE_SRC                  = re.compile(r'''src=['"]?(\S+?)[\n"'#> ]''')
 RE_ALL_LINKS            = re.compile(r'''(src|href)=(['"])?https?://''' + input_host + '[/]?')
 RE_ALL_LINKS_SCHEMELESS = re.compile(r'''(src|href)=(['"])?//''' + input_host + '/')
-RE_ALL_LINKS_RELATIVE   = re.compile(r'''(src|href)=(['"])?[/]?((?!http|data:)[^ '";\n]+?)''')
 RE_CSS_URLS_FULL_CLEAN  = re.compile(r'''url\((['"])?https?://''' + input_host + '/')
 RE_CSS_URLS_ALL         = re.compile(r'''url\((['"])?([^ '"?)#]+)''')
 RE_INLINE_STYLE         = re.compile(r'''<style(.+?)(?:</style>|/>)''', flags=re.DOTALL)
@@ -219,9 +218,6 @@ def download_assets(links):
 def write_html_file(html, name):
     html = RE_ALL_LINKS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
     html = RE_ALL_LINKS_SCHEMELESS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
-
-    if ABSOLUTE_URL_PREFIX:
-        html = RE_ALL_LINKS_RELATIVE.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/\3', html)
 
     with open(f'{output_dir}/{name}.html', 'w') as f:
         f.writelines(html)
