@@ -70,17 +70,17 @@ if input_path in {'', '/'}:
 else:
     start_at_root = False
 
-RE_HREF                 = re.compile(r'''href=['"]?(\S+?)[\n"'#> ]''')
-RE_SRC                  = re.compile(r'''src=['"]?(\S+?)[\n"'#> ]''')
-RE_SRCSET               = re.compile(r'''srcset=['"]?(.+?)["'#>]''', flags=re.DOTALL)
-RE_ALL_LINKS            = re.compile(r'''(src|href)=(['"])?https?://''' + input_host + '[/]?')
-RE_ALL_LINKS_SCHEMELESS = re.compile(r'''(src|href)=(['"])?//''' + input_host + '/')
+RE_HREF                 = re.compile(r'''href\s*?=\s*?['"]?(\S+?)[\n"'#> ]''')
+RE_SRC                  = re.compile(r'''src\s*?=\s*?['"]?(\S+?)[\n"'#> ]''')
+RE_SRCSET               = re.compile(r'''srcset\s*?=\s*?['"]?(.+?)["'#>]''', flags=re.DOTALL)
+RE_ALL_LINKS            = re.compile(r'''(src|href)\s*?=\s*?(['"])?https?://''' + input_host + '[/]?')
+RE_ALL_LINKS_SCHEMELESS = re.compile(r'''(src|href)\s*?=\s*?(['"])?//''' + input_host + '/')
 RE_CSS_URLS_FULL_CLEAN  = re.compile(r'''url\(\s*?(['"])?https?://''' + input_host + '/')
 RE_CSS_URLS_ALL         = re.compile(r'''url\(\s*?(['"])?([^ '"?)#]+)''')
 RE_INLINE_STYLE         = re.compile(r'''<style(.+?)(?:</style>|/>)''', flags=re.DOTALL)
 RE_FORM_ELEMENT         = re.compile(r'''<form(.+?)>''', flags=re.DOTALL)
-RE_FORM_METHOD          = re.compile(r'''(method=['"]?)post([\n"'#> ])''', flags=re.IGNORECASE)
-RE_FORM_ACTION          = re.compile(r'''(action=['"]?)(\S+?)([\n"'#> ])''')
+RE_FORM_METHOD          = re.compile(r'''(method\s*?=\s*?['"]?)post([\n"'#> ])''', flags=re.IGNORECASE)
+RE_FORM_ACTION          = re.compile(r'''(action\s*?=\s*?['"]?)(\S+?)([\n"'#> ])''')
 
 c = pycurl.Curl()
 c.setopt(pycurl.USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
