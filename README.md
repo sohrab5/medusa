@@ -37,6 +37,10 @@ If you really want to have absolute links, use the option `--absolute-url` and s
 
 In addition to supporting absolute URLs like mentioned above, Medusa supports crawling websites that use relative URLs as well. For example links such as `/foo`, `./foo`, `../foo`, `//foo`, `foo` are understood, resolved and scraped, based on the address of the page they were found on.
 
+### HTML Forms
+
+Obviously any `<form>` element that interacts with the server, such as making a post request, is rendered useless on the static website. So by default post method on forms are changed to get with an empty action to prevent sending requests to potentially the original dynamic domain from the static website. Use the option `--no-form-mangling` to avoid this behavior.
+
 ### Installing dependencies
 
 The only dependency beside python standard library is [pycurl](https://pypi.org/project/pycurl/)

@@ -35,6 +35,7 @@ argparser.add_argument('-s', '--skip', nargs='*', help='skip paths that contain'
 argparser.add_argument('--no-static', help='skip downloading static files', action='store_true')
 argparser.add_argument('--absolute-url', nargs='?', help='prefix links with given URL', action='store', default=None)
 argparser.add_argument('--no-ssl-verify', help="don't verify SSL cert of target URL", action='store_true')
+argparser.add_argument('--no-form-mangling', help="don't touch <form> HTML elements", action='store_true')
 argparser.add_argument('--socks-proxy-port', nargs='?', help='connect through socks5 proxy on given localhost port', action='store', default=None)
 pargs = argparser.parse_args()
 pargs = vars(pargs)
@@ -77,6 +78,9 @@ RE_ALL_LINKS_SCHEMELESS = re.compile(r'''(src|href)=(['"])?//''' + input_host + 
 RE_CSS_URLS_FULL_CLEAN  = re.compile(r'''url\((['"])?https?://''' + input_host + '/')
 RE_CSS_URLS_ALL         = re.compile(r'''url\((['"])?([^ '"?)#]+)''')
 RE_INLINE_STYLE         = re.compile(r'''<style(.+?)(?:</style>|/>)''', flags=re.DOTALL)
+RE_FORM_ELEMENT         = re.compile(r'''<form(.+?)>''', flags=re.DOTALL)
+RE_FORM_METHOD          = re.compile(r'''(method=['"]?)post([\n"'#> ])''', flags=re.IGNORECASE)
+RE_FORM_ACTION          = re.compile(r'''(action=['"]?)(\S+?)([\n"'#> ])''')
 
 c = pycurl.Curl()
 c.setopt(pycurl.USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
@@ -220,13 +224,7 @@ def download_assets(links):
             continue
 
 def write_html_file(html, name):
-    html = RE_ALL_LINKS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
-    html = RE_ALL_LINKS_SCHEMELESS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
-
-    srcsets = RE_SRCSET.findall(html)
-    for srcset in srcsets:
-        modified_srcset = srcset.replace(input_root_url, ABSOLUTE_URL_PREFIX)
-        html = html.replace(srcset, modified_srcset)
+    html = process_html(html)
 
     with open(f'{output_dir}/{name}.html', 'w') as f:
         f.writelines(html)
@@ -244,6 +242,24 @@ def process_css_url_functions(link, content):
 
     modified_content = RE_CSS_URLS_FULL_CLEAN.sub(r'url(\1/', content)
     return modified_content
+
+def process_html(html):
+    html = RE_ALL_LINKS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
+    html = RE_ALL_LINKS_SCHEMELESS.sub(fr'\1=\2{ABSOLUTE_URL_PREFIX}/', html)
+
+    srcsets = RE_SRCSET.findall(html)
+    for srcset in srcsets:
+        modified_srcset = srcset.replace(input_root_url, ABSOLUTE_URL_PREFIX)
+        html = html.replace(srcset, modified_srcset)
+
+    if not pargs['no_form_mangling']:
+        forms = RE_FORM_ELEMENT.findall(html)
+        for form in forms:
+            modified_form = RE_FORM_METHOD.sub(r'\1get\2', form)
+            modified_form = RE_FORM_ACTION.sub(r'\1\3', modified_form)
+            html = html.replace(form, modified_form)
+
+    return html
 
 def download_css_files(css_files):
     for link in css_files:
