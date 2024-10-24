@@ -77,7 +77,10 @@ RE_ALL_LINKS            = re.compile(r'''(src|href)\s*?=\s*?(['"])?https?://''' 
 RE_ALL_LINKS_SCHEMELESS = re.compile(r'''(src|href)\s*?=\s*?(['"])?//''' + input_host + '/')
 RE_CSS_URLS_FULL_CLEAN  = re.compile(r'''url\(\s*?(['"])?https?://''' + input_host + '/')
 RE_CSS_URLS_ALL         = re.compile(r'''url\(\s*?(['"])?([^ '"?)#]+)''')
-RE_INLINE_STYLE         = re.compile(r'''<style(.+?)(?:</style>|/>)''', flags=re.DOTALL)
+RE_INLINE_STYLE_TAG     = re.compile(r'''<style(.+?)(?:</style>|/>)''', flags=re.DOTALL)
+RE_INLINE_STYLE_ATTR_SQ = re.compile(r"""<.*?style\s*?=\s*?'(.+?)'""")
+RE_INLINE_STYLE_ATTR_DQ = re.compile(r'''<.*?style\s*?=\s*?"(.+?)"''')
+RE_INLINE_STYLE_ATTR_NQ = re.compile(r'''<.*?style\s*?=\s*?(.+?)[\n >]''')
 RE_FORM_ELEMENT         = re.compile(r'''<form(.+?)>''', flags=re.DOTALL)
 RE_FORM_METHOD          = re.compile(r'''(method\s*?=\s*?['"]?)post([\n"'#> ])''', flags=re.IGNORECASE)
 RE_FORM_ACTION          = re.compile(r'''(action\s*?=\s*?['"]?)(\S+?)([\n"'#> ])''')
@@ -139,7 +142,10 @@ def get_html_and_links(link):
     hrefs_set = resolve_links(href_links_list, current_path_dir)
     srcs_set  = resolve_links(src_links_list,  current_path_dir)
 
-    inline_style_sections = RE_INLINE_STYLE.findall(html)
+    inline_style_sections = RE_INLINE_STYLE_TAG.findall(html)
+    inline_style_sections.extend(RE_INLINE_STYLE_ATTR_SQ.findall(html))
+    inline_style_sections.extend(RE_INLINE_STYLE_ATTR_DQ.findall(html))
+    inline_style_sections.extend(RE_INLINE_STYLE_ATTR_NQ.findall(html))
     for style_section in inline_style_sections:
         modified_style_section = process_css_url_functions(link, style_section)
         html = html.replace(style_section, modified_style_section)
